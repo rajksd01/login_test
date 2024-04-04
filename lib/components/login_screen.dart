@@ -1,5 +1,8 @@
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:http/http.dart" as http;
+import "package:flutter_dotenv/flutter_dotenv.dart";
+import "package:login_test/components/otp_screen.dart";
 
 class HomeLoginScreen extends StatefulWidget {
   const HomeLoginScreen({super.key});
@@ -10,11 +13,28 @@ class HomeLoginScreen extends StatefulWidget {
 }
 
 class _HomeLoginState extends State<HomeLoginScreen> {
-  TextEditingController countryCode = TextEditingController();
+  TextEditingController countryCodeController = TextEditingController();
+  TextEditingController phoneNumberController = TextEditingController();
   @override
   void initState() {
-    countryCode.text = "+91";
+    countryCodeController.text = "+91";
     super.initState();
+  }
+
+// for enabling and diabling the send code button based on user phoneNumber
+  bool isButtonDisabled = true;
+  // function to send otp
+  void sendOtp() async {
+    if (phoneNumberController.text.isNotEmpty &&
+        countryCodeController.text.isNotEmpty) {
+      var reqBody = {
+        "mobileNumber": countryCodeController.text + phoneNumberController.text
+      };
+      var otpURL = dotenv.env["OTP_URL"];
+      if (otpURL != null) {
+        await http.post(Uri.parse(otpURL), body: reqBody);
+      }
+    }
   }
 
   @override
@@ -67,7 +87,7 @@ class _HomeLoginState extends State<HomeLoginScreen> {
                         style: const TextStyle(
                           fontSize: 25,
                         ),
-                        controller: countryCode,
+                        controller: countryCodeController,
                         decoration: const InputDecoration(
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.only(left: 10)),
@@ -84,6 +104,7 @@ class _HomeLoginState extends State<HomeLoginScreen> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
                         child: TextField(
+                          controller: phoneNumberController,
                           style: const TextStyle(
                             fontSize: 30,
                           ),
@@ -95,6 +116,11 @@ class _HomeLoginState extends State<HomeLoginScreen> {
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.only(left: 10),
                               hintText: "98XXXXXXXX "),
+                          onChanged: (value) {
+                            setState(() {
+                              isButtonDisabled = value.length != 10;
+                            });
+                          },
                         ),
                       ),
                     ),
@@ -108,9 +134,21 @@ class _HomeLoginState extends State<HomeLoginScreen> {
                 height: 45,
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, "otp");
-                  },
+                  onPressed: isButtonDisabled
+                      ? null
+                      : () {
+                          sendOtp();
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OtpScreen(
+                                mobileNumber: countryCodeController.text +
+                                    phoneNumberController.text,
+                              ),
+                            ),
+                          );
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.amber[900],
                   ),
